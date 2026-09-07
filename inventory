@@ -1,3 +1,0 @@
-[webuser@control-node web_ansible]$ cat inventory
-[webserver]
-192.168.1.20
