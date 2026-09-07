@@ -24,3 +24,5 @@ PLAY RECAP *********************************************************************
 192.168.1.20               : ok=5    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
 
 [webuser@control-node web_ansible]$
+[webuser@control-node web_ansible]$ curl 192.168.1.20
+<h1>The webserver deployed successfully</h1>[webuser@control-node web_ansible]$
