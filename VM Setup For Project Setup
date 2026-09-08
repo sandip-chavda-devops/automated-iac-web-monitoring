@@ -1,0 +1,4 @@
+Role / Component	Hostname	IP Address	Key Ports & Services
+Ansible Control Node	control-node	192.168.1.10	SSH (22), Automation Engine ansible server
+Target Web Nodetarget-node192.168.1.20HTTP (80), Node Exporter (9100), Apache Exporter (9117)
+Monitoring Stationmonitoring-server192.168.1.30Prometheus (9090), Grafana (3000)
