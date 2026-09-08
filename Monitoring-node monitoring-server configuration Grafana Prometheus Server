@@ -1,0 +1,120 @@
+# Centralized Monitoring Station Configuration & Execution Log (192.168.1.30)
+
+This document details the deployment, time-series telemetry configuration, and dashboard visualization gateway setup on the Monitoring Node.
+
+---
+
+## 1. Prometheus Setup & Time-Series Engine (Port 9090)
+Downloaded, extracted, and configured Prometheus for pull-based metric scraping:
+```bash
+# Download and extract Prometheus binary package
+wget https://github.com/prometheus/prometheus/releases/download/v2.45.0/prometheus-2.45.0.linux-amd64.tar.gz
+tar -xvf prometheus-2.45.0.linux-amd64.tar.gz
+cd prometheus-2.45.0.linux-amd64
+
+# Configure scraping targets and rules, then start Prometheus in the background
+# Prometheus Configuration File (`prometheus.yml`)
+Located at: `prometheus-2.45.0.linux-amd64/prometheus.yml`
+
+vim promethus.yml
+```yaml
+# my global config
+global:
+  scrape_interval: 15s # Set the scrape interval to every 15 seconds. Default is every 1 minute.
+  evaluation_interval: 15s # Evaluate rules every 15 seconds. The default is every 1 minute.
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # - alertmanager:9093
+
+# Load rules once and periodically evaluate them according to the global 'evaluation_interval'.
+rule_files:
+   - "alert_rules.yml"
+
+# A scrape configuration containing endpoints to scrape:
+scrape_configs:
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # --- PROJECT TARGET (SERVER 2) ---
+  - job_name: "target-node"
+    static_configs:
+      - targets: ["192.168.1.20:9100"]
+
+  - job_name: 'apache_status'
+    static_configs:
+      - targets: ['192.168.1.20:9117']
+!wq
+
+[root@monitoring-server ~]# vim prometheus-2.45.0.linux-amd64/alert_rules.yml
+groups:
+  - name: server_health_alerts
+    rules:
+      # 1. Instance Down (Server status)
+      - alert: InstanceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Server Offline!"
+          description: "Target node is unreachable."
+
+      # 2. Apache Service Alert (Web Server status)
+      - alert: ApacheDown
+        expr: apache_up == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Apache is DOWN!"
+          description: "The Apache web server on the target node has stopped."
+
+      # 3. High Memory Usage (> 90%)
+      - alert: HighMemoryUsage
+        expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes * 100 > 90
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High RAM Usage!"
+          description: "Server RAM usage is above 90%."
+
+      # 4. High CPU Load
+      - alert: HighCPULoad
+        expr: node_load1 > 1.5
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU Load!"
+          description: "Target node CPU load is above 1.5."
+
+./prometheus --config.file=prometheus.yml &
+
+#Grafana setup:
+[root@monitoring-server ~]# vim /etc/yum.repos.d/grafana.repo
+[grafana]
+name=grafana
+baseurl=https://packages.grafana.com/oss/rpm
+repo_gpgcheck=0
+enabled=1
+gpgcheck=0
+
+## 2. Grafana Visualization Gateway Setup (Port 3000)
+Installed and initialized the Grafana server to act as the web frontend for metrics:
+```bash
+# Install Grafana package and start service
+sudo yum install grafana -y
+sudo systemctl enable --now grafana-server
+sudo systemctl status grafana-server
+
+# Open Grafana and Promethus web port in firewall
+firewall-cmd --permanent --add-port=9090/tcp
+firewall-cmd --permanent --add-port=3000/tcp
+firewall-cmd --reload
+
