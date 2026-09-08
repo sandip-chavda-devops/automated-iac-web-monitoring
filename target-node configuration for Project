@@ -1,0 +1,29 @@
+# Target Web Node Configuration & Execution Log (192.168.1.20)
+
+This document details the configuration, telemetry setup, and firewall hardening executed on the Target Web Workstation.
+
+---
+
+## 1. Node Exporter Installation (System Metrics Collection - Port 9100)
+Downloaded and initialized Node Exporter to track core hardware and OS performance metrics:
+```bash
+[root@target-node ~]# wget https://github.com/prometheus/node_exporter/releases/download/v1.7.0/node_exporter-1.7.0.linux-amd64.tar.gz
+tar -xvf node_exporter-1.7.0.linux-amd64.tar.gz
+cd node_exporter-1.7.0.linux-amd64
+nohup ./node_exporter > /dev/null 2>&1 &
+
+[root@target-node ~]# wget https://github.com/Lusitaniae/apache_exporter/releases/download/v0.13.4/apache_exporter-0.13.4.linux-amd64.tar.gz
+tar -xvf apache_exporter-0.13.4.linux-amd64.tar.gz
+cd apache_exporter-0.13.4.linux-amd64/
+nohup ./apache_exporter --scrape_uri="http://localhost:80/server-status?auto" > apache.log 2>&1 &
+
+firewall-cmd --permanent --add-port=80/tcp
+firewall-cmd --permanent --add-port=9100/tcp
+firewall-cmd --permanent --add-port=9117/tcp
+firewall-cmd --reload
+firewall-cmd --list-all
+
+systemctl enable --now httpd
+systemctl status httpd
+[root@target-node ~]# curl localhost
+<h1>The webserver deployed successfully</h1>[root@target-node ~]#
